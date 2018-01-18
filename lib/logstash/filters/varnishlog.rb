@@ -40,9 +40,13 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     end
     ## VCL Log
     vcl_log = items.grep(/VCL_Log/)
-    vcl_log.each do |log|
+    log_lines = []
+    vcl_log.each_with_index do |log, index|
       if match = /-\s+VCL_Log\s+(?<log_line>.*)/.match(log)
-        (log_lines ||= []).push(match['log_line'])
+        log_lines.push(match['log_line'])
+        event.set("[VCL_Log][#{index}]", log_lines)
+      end
+      if index == log_lines.size - 1
         event.set("VCL_Log", log_lines)
       end
     end
@@ -81,15 +85,25 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
       event.set("RespProtocol", protocol_match['protocol'])
     end
     ## Match RespStatus
-    if status_match = /-\s+RespStatus\s+(?<status>.*)/.match(items.grep(/RespStatus/)[0])
-      event.set("RespStatus", status_match['status'].to_i)
+    status_match = items.grep(/RespStatus/)
+    states = []
+    status_match.each_with_index do |status, index|
+      if match = /-\s+RespStatus\s+(?<status>.*)/.match(status)
+         states.push(match['status'].to_i)
+      end
+      if index == status_match.size - 1
+	 event.set("RespStatus", states)
+      end
     end
     ## Match RespReason
     response_reason = items.grep(/RespReason/)
-    response_reason.each do |reason|
+    reasons = []
+    response_reason.each_with_index do |reason, index|
       if match = /-\s+RespReason\s+(?<reason>.*)/.match(reason)
-        (reasons ||= []).push(match['reason'])
-        event.set("RespReason", reasons) 
+         reasons.push(match['reason'])
+      end
+      if index == response_reason.size - 1
+        event.set("RespReason", reasons)
       end
     end
     
