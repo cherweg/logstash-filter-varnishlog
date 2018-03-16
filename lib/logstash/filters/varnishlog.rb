@@ -6,6 +6,14 @@ require "logstash/namespace"
 # message field with whatever you specify in the configuration.
 #
 # It is only intended to be used as an .
+
+##Extenting array class to to an something like grep -v
+class Array
+  def grepv(regex, &block)
+    self.reject { |elem| elem =~ regex }.each(&block)
+  end
+end
+
 class LogStash::Filters::Varnishlog < LogStash::Filters::Base
 
   # Setting the config_name here is required. This is how you
@@ -21,7 +29,7 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
   
   # Replace the message with this value.
   #config :message, :validate => :string, :default => "Hello World!"
-  
+  config :blacklist_sections, :validate => :array, :default => []
 
   public
   def register
@@ -31,6 +39,10 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
   public
   def filter(event)
     items = event.get("[message]").split("\n")
+    ##Remove Blacklisted items from items hash
+    items = items.grepv(/(#{blacklist_sections.join("|")})/) if blacklist_sections.any?
+    ##
+
     ##timestamps
     timestamps = items.grep(/Timestamp/)
     timestamps.each do |timestamp|
@@ -44,7 +56,6 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     vcl_log.each_with_index do |log, index|
       if match = /-\s+VCL_Log\s+(?<log_line>.*)/.match(log)
         log_lines.push(match['log_line'])
-        event.set("[VCL_Log][#{index}]", log_lines)
       end
       if index == log_lines.size - 1
         event.set("VCL_Log", log_lines)
