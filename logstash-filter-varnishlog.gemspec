@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name          = 'logstash-filter-varnishlog'
-  s.version       = '0.1.5'
+  s.version       = '0.1.7'
   s.licenses      = ['Apache License (2.0)']
   s.summary       = 'A logstash plugin reading varnishlog output'
   s.description   = 'logstash filter plugin reading varnishlog grouped by id'

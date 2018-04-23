@@ -1,3 +1,10 @@
+## 0.1.7
+  - Refactor regex parser
+## 0.1.6
+  - Make Blacklist Case-Insentive
+  - Add normalize_fieldnames option 
+  TODO: Make Case-Match optional
+        Make normalize configurable
 ## 0.1.5
   - config to remove blacklisted items from items hash
 ## 0.1.4

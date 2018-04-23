@@ -10,7 +10,7 @@ require "logstash/namespace"
 ##Extenting array class to to an something like grep -v
 class Array
   def grepv(regex, &block)
-    self.reject { |elem| elem =~ regex }.each(&block)
+    self.reject { |elem| elem.match(/#{regex}/i) }.each(&block)
   end
 end
 
@@ -26,28 +26,39 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
   # }
   #
   config_name "varnishlog"
-  
+
   # Replace the message with this value.
   #config :message, :validate => :string, :default => "Hello World!"
   config :blacklist_sections, :validate => :array, :default => []
-
+  config :normalize_fieldnames, :validate => :boolean, :default => false
   public
   def register
-    # Add instance variables 
+    # Add instance variables
   end # def register
 
   public
   def filter(event)
     items = event.get("[message]").split("\n")
+    if request=/\*+\s+<<\s+(?<type>\w+)\s+>>\s+/.match(items[0])
+      event.set("type", request['type'].downcase)
+    end
     ##Remove Blacklisted items from items hash
-    items = items.grepv(/(#{blacklist_sections.join("|")})/) if blacklist_sections.any?
+    items = items.grepv(blacklist_sections.join("|")) if blacklist_sections.any?
     ##
 
     ##timestamps
     timestamps = items.grep(/Timestamp/)
     timestamps.each do |timestamp|
       if match = /-\s+Timestamp\s+(?<step>.*): (?<time_a>.*) (?<time_b>.*) (?<time_c>.*)/.match(timestamp)
-        event.set("timestamp_" + match['step'], match['time_a'])
+        event.set(normalize_fields("timestamp_" + match['step'] ), match['time_a'])
+      end
+    end
+
+    ##Acct
+    account = items.grep(/(Be|Req)Acct/)
+    account.each do |acct|
+      if acct_match = /-\s+(Be|Req)Acct\s+(?<size_a>\d)\s+(?<size_b>\d)\s+(?<size_c>\d)\s+(?<size_d>\d)\s+(?<size_e>\d)\s+(?<size_f>\d)\s+/.match(acct)
+        event.set("bytes", acct_match['size_e'])
       end
     end
     ## VCL Log
@@ -58,66 +69,54 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
         log_lines.push(match['log_line'])
       end
       if index == log_lines.size - 1
-        event.set("VCL_Log", log_lines)
+        event.set(normalize_fields("VCL_Log"), log_lines)
       end
     end
 
     # Requests
     ## Request headers.
-    request_headers = items.grep(/ReqHeader/)
+    request_headers = items.grep(/(Be)?([rR]eq|[rR]esp)Header/)
     request_headers.each do |header|
-      if match = /-\s+ReqHeader\s+(?<header_name>.*?): (?<header_value>.*)/.match(header)
-        event.set(match['header_name'], match['header_value'])
+      if match = /-+\s+(Be)?([rR]eq|[rR]esp)Header\s+(?<header_name>.*?): (?<header_value>.*)/.match(header)
+        event.set(normalize_fields(match['header_name']), match['header_value'])
       end
     end
     ## Match ReqMethod.
-    if method_match = /-\s+ReqMethod\s+(?<method>.*)/.match(items.grep(/ReqMethod/)[0])
-      event.set("http-method", method_match['method'])
+    if method_match = /-+\s+(Be)?([rR]eq|[rR]esp)Method\s+(?<method>.*)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)Method/)[0])
+      event.set("http_method", method_match['method'])
     end
     ## Match ReqURL.
-    if url_match = /-\s+ReqURL\s+(?<url>\/.*)/.match(items.grep(/ReqURL/)[0])
+    if url_match = /-+\s+(Be)?([rR]eq|[rR]esp)URL\s+(?<url>\/.*)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)URL/)[0])
       event.set("url", url_match['url'])
     end
     ## Match ReqProtocol.
-    if protocol_match = /-\s+ReqProtocol\s+(?<protocol>.*)/.match(items.grep(/ReqProtocol/)[0])
-      event.set("ReqProtocol", protocol_match['protocol'])
+    if protocol_match = /-+\s+(Be)?([rR]eq|[rR]esp)Protocol\s+(?<protocol>.*)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)Protocol/)[0])
+      event.set("protocol", protocol_match['protocol'])
     end
-    
-    # Response
-    ## Response headers.
-    response_headers = items.grep(/RespHeader/)
-    response_headers.each do |header|
-      if match = /-\s+RespHeader\s+(?<header_name>.*?): (?<header_value>.*)/.match(header)
-        event.set(match['header_name'], match['header_value'])
-      end
-    end
-    ## Match RespProtocol
-    if protocol_match = /-\s+RespProtocol\s+(?<protocol>.*)/.match(items.grep(/RespProtocol/)[0])
-      event.set("RespProtocol", protocol_match['protocol'])
-    end
+
     ## Match RespStatus
-    status_match = items.grep(/RespStatus/)
+    status_match = items.grep(/(Be)?([rR]eq|[rR]esp)Status/)
     states = []
     status_match.each_with_index do |status, index|
-      if match = /-\s+RespStatus\s+(?<status>.*)/.match(status)
-         states.push(match['status'].to_i)
+      if match = /-+\s+(Be)?([rR]eq|[rR]esp)Status\s+(?<status>.*)/.match(status)
+        states.push(match['status'].to_i)
       end
       if index == status_match.size - 1
-	 event.set("RespStatus", states)
+        event.set("http-rc", states)
       end
     end
     ## Match RespReason
-    response_reason = items.grep(/RespReason/)
+    response_reason = items.grep(/(Be)?([rR]eq|[rR]esp)Reason/)
     reasons = []
     response_reason.each_with_index do |reason, index|
-      if match = /-\s+RespReason\s+(?<reason>.*)/.match(reason)
-         reasons.push(match['reason'])
+      if match = /-+\s+(Be)?([rR]eq|[rR]esp)Reason\s+(?<reason>.*)/.match(reason)
+        reasons.push(match['reason'])
       end
       if index == response_reason.size - 1
-        event.set("RespReason", reasons)
+        event.set("reason", reasons)
       end
     end
-    
+
     if @message
       # Replace the event message with our message as configured in the
       # config file.
@@ -127,4 +126,9 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     # filter_matched should go in the last line of our successful code
     filter_matched(event)
   end # def filter
+
+  private
+  def normalize_fields(name)
+    name.capitalize.gsub(/[_-](\w)/){$1.upcase} if @normalize_fieldnames
+  end
 end # class LogStash::Filters::Varnishlog
