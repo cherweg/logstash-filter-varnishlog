@@ -1,3 +1,6 @@
+## 0.1.8
+  - Fix Acct
+  - Add Fetch Error
 ## 0.1.7
   - Refactor regex parser
 ## 0.1.6

@@ -57,7 +57,7 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     ##Acct
     account = items.grep(/(Be|Req)Acct/)
     account.each do |acct|
-      if acct_match = /-\s+(Be|Req)Acct\s+(?<size_a>\d)\s+(?<size_b>\d)\s+(?<size_c>\d)\s+(?<size_d>\d)\s+(?<size_e>\d)\s+(?<size_f>\d)\s+/.match(acct)
+      if acct_match = /-\s+(Be|Req)Acct\s+(?<size_a>\d+)\s+(?<size_b>\d+)\s+(?<size_c>\d+)\s+(?<size_d>\d+)\s+(?<size_e>\d+)\s+(?<size_f>\d+)/.match(acct)
         event.set("bytes", acct_match['size_e'])
       end
     end
@@ -93,7 +93,10 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     if protocol_match = /-+\s+(Be)?([rR]eq|[rR]esp)Protocol\s+(?<protocol>.*)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)Protocol/)[0])
       event.set("protocol", protocol_match['protocol'])
     end
-
+    ## FetchError.
+    if error_match = /-+\s+FetchError\s+(?<error>.*)/.match(items.grep(/FetchError/)[0])
+      event.set("FetchError", error_match['error'])
+    end
     ## Match RespStatus
     status_match = items.grep(/(Be)?([rR]eq|[rR]esp)Status/)
     states = []
