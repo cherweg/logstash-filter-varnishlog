@@ -51,6 +51,7 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     timestamps.each do |timestamp|
       if match = /-\s+Timestamp\s+(?<step>.*): (?<time_a>.*) (?<time_b>.*) (?<time_c>.*)/.match(timestamp)
         event.set(normalize_fields("timestamp_" + match['step'] ), match['time_a'])
+        event.set(normalize_fields("timestamp_" + match['step'] + "_raw"), match['time_a'] + " " + match['time_b'] + " " + match['time_c'])
       end
     end
 
