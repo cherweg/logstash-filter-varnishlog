@@ -49,7 +49,7 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     ##timestamps
     timestamps = items.grep(/Timestamp/)
     timestamps.each do |timestamp|
-      if match = /-\s+Timestamp\s+(?<step>.*): (?<time_a>.*) (?<time_b>.*) (?<time_c>.*)/.match(timestamp)
+      if match = /-\s+Timestamp\s+(?<step>.+): (?<time_a>.*) (?<time_b>.+) (?<time_c>.+)/.match(timestamp)
         event.set(normalize_fields("timestamp_" + match['step'] ), match['time_a'])
         event.set(normalize_fields("timestamp_" + match['step'] + "_raw"), match['time_a'] + " " + match['time_b'] + " " + match['time_c'])
       end
@@ -66,7 +66,7 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     vcl_log = items.grep(/VCL_Log/)
     log_lines = []
     vcl_log.each_with_index do |log, index|
-      if match = /-\s+VCL_Log\s+(?<log_line>.*)/.match(log)
+      if match = /-\s+VCL_Log\s+(?<log_line>.+)/.match(log)
         log_lines.push(match['log_line'])
       end
       if index == log_lines.size - 1
@@ -78,31 +78,31 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     ## Request headers.
     request_headers = items.grep(/(Be)?([rR]eq|[rR]esp)Header/)
     request_headers.each do |header|
-      if match = /-+\s+(Be)?([rR]eq|[rR]esp)Header\s+(?<header_name>.*?): (?<header_value>.*)/.match(header)
+      if match = /-+\s+(Be)?([rR]eq|[rR]esp)Header\s+(?<header_name>.+): (?<header_value>.*)/.match(header)
         event.set(normalize_fields(match['header_name']), match['header_value'])
       end
     end
     ## Match ReqMethod.
-    if method_match = /-+\s+(Be)?([rR]eq|[rR]esp)Method\s+(?<method>.*)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)Method/)[0])
+    if method_match = /-+\s+(Be)?([rR]eq|[rR]esp)Method\s+(?<method>.+)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)Method/)[0])
       event.set("http_method", method_match['method'])
     end
     ## Match ReqURL.
-    if url_match = /-+\s+(Be)?([rR]eq|[rR]esp)URL\s+(?<url>\/.*)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)URL/)[0])
+    if url_match = /-+\s+(Be)?([rR]eq|[rR]esp)URL\s+(?<url>\/.+)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)URL/)[0])
       event.set("url", url_match['url'])
     end
     ## Match ReqProtocol.
-    if protocol_match = /-+\s+(Be)?([rR]eq|[rR]esp)Protocol\s+(?<protocol>.*)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)Protocol/)[0])
+    if protocol_match = /-+\s+(Be)?([rR]eq|[rR]esp)Protocol\s+(?<protocol>.+)/.match(items.grep(/(Be)?([rR]eq|[rR]esp)Protocol/)[0])
       event.set("protocol", protocol_match['protocol'])
     end
     ## FetchError.
-    if error_match = /-+\s+FetchError\s+(?<error>.*)/.match(items.grep(/FetchError/)[0])
+    if error_match = /-+\s+FetchError\s+(?<error>.+)/.match(items.grep(/FetchError/)[0])
       event.set("FetchError", error_match['error'])
     end
     ## Match RespStatus
     status_match = items.grep(/(Be)?([rR]eq|[rR]esp)Status/)
     states = []
     status_match.each_with_index do |status, index|
-      if match = /-+\s+(Be)?([rR]eq|[rR]esp)Status\s+(?<status>.*)/.match(status)
+      if match = /-+\s+(Be)?([rR]eq|[rR]esp)Status\s+(?<status>.+)/.match(status)
         states.push(match['status'].to_i)
       end
       if index == status_match.size - 1
@@ -113,7 +113,7 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     response_reason = items.grep(/(Be)?([rR]eq|[rR]esp)Reason/)
     reasons = []
     response_reason.each_with_index do |reason, index|
-      if match = /-+\s+(Be)?([rR]eq|[rR]esp)Reason\s+(?<reason>.*)/.match(reason)
+      if match = /-+\s+(Be)?([rR]eq|[rR]esp)Reason\s+(?<reason>.+)/.match(reason)
         reasons.push(match['reason'])
       end
       if index == response_reason.size - 1

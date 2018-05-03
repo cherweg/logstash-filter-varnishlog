@@ -1,3 +1,5 @@
+## 0.2.0
+  - Make better RegEx Patterns
 ## 0.1.9
   - Add Raw Timestamps
 ## 0.1.8
