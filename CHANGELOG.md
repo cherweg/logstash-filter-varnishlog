@@ -1,3 +1,6 @@
+## 0.2.1
+  - Add xid and begin line
+  - regex performance
 ## 0.2.0
   - Make better RegEx Patterns
 ## 0.1.9
