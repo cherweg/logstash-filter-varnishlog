@@ -1,3 +1,5 @@
+## 0.2.2
+  - Fix Header detection to match only valid Header names regex:[\w-], instead all .+ characters
 ## 0.2.1
   - Add xid and begin line
   - regex performance
