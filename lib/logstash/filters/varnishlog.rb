@@ -85,7 +85,7 @@ class LogStash::Filters::Varnishlog < LogStash::Filters::Base
     ## Request headers.
     request_headers = items.grep(/(Bereq|Req|Beresp|Resp)Header/)
     request_headers.each do |header|
-      if match = /-+\s+(Bereq|Req|Beresp|Resp)Header\s+(?<header_name>.+): (?<header_value>.*)/.match(header)
+      if match = /-+\s+(Bereq|Req|Beresp|Resp)Header\s+(?<header_name>[\w-]+): (?<header_value>.*)/.match(header)
         event.set(normalize_fields(match['header_name']), match['header_value'])
       end
     end
